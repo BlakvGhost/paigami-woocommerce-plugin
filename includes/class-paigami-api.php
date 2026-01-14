@@ -6,7 +6,6 @@ if (!defined('ABSPATH')) {
 
 class Paigami_WC_API
 {
-
     private $api_key;
     private $secret_key;
     private $test_mode;
@@ -31,7 +30,6 @@ class Paigami_WC_API
 
     public function is_configured()
     {
-        var_dump($this->api_key);
         return !empty($this->api_key);
     }
 
@@ -42,12 +40,37 @@ class Paigami_WC_API
 
     public function get_countries()
     {
-        return $this->request('GET', '/metadata/countries');
+        try {
+            $countries = $this->request('GET', '/metadata/countries');
+            // Debug: afficher la réponse complète
+            error_log('Paigami API Response: ' . print_r($countries, true));
+
+            return $countries;
+        } catch (Exception $e) {
+            // Debug: afficher l'erreur
+            error_log('Paigami API Error in get_countries: ' . $e->getMessage());
+            error_log('Error Code: ' . $e->getCode());
+            // Retourner un tableau vide en cas d'erreur
+            return array(
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => array()
+            );
+        }
     }
 
     public function get_wallets($country_id)
     {
-        return $this->request('GET', "/metadata/wallets?country_id={$country_id}");
+        try {
+            return $this->request('GET', "/metadata/wallets?country_id={$country_id}");
+        } catch (Exception $e) {
+            error_log('Paigami API Error in get_wallets: ' . $e->getMessage());
+            return array(
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => array()
+            );
+        }
     }
 
     public function get_checkout_options($country_id, $amount, $currency = null)
@@ -62,7 +85,17 @@ class Paigami_WC_API
         }
 
         $query = http_build_query($params);
-        return $this->request('GET', "/checkout/options?{$query}");
+
+        try {
+            return $this->request('GET', "/checkout/options?{$query}");
+        } catch (Exception $e) {
+            error_log('Paigami API Error in get_checkout_options: ' . $e->getMessage());
+            return array(
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => array()
+            );
+        }
     }
 
     public function init_payment($payment_data)
@@ -90,6 +123,10 @@ class Paigami_WC_API
     {
         $url = $this->base_url . $endpoint;
 
+        // Debug: Log la requête
+        error_log("Paigami API Request: {$method} {$url}");
+        error_log("API Key configured: " . (!empty($this->api_key) ? 'Yes' : 'No'));
+
         $args = array(
             'method' => $method,
             'timeout' => $this->timeout,
@@ -98,30 +135,55 @@ class Paigami_WC_API
                 'Accept' => 'application/json',
                 'X-API-Key' => $this->api_key,
                 'User-Agent' => 'Paigami-WooCommerce/' . PAIGAMI_WC_VERSION . '; ' . get_bloginfo('url')
-            )
+            ),
+            'sslverify' => false // Pour le développement local uniquement
         );
 
         if ($data && in_array($method, array('POST', 'PUT', 'PATCH'))) {
             $args['body'] = json_encode($data);
+            error_log("Request Body: " . json_encode($data));
         }
 
         $response = wp_remote_request($url, $args);
 
+        // Debug: Vérifier si c'est une erreur WordPress
         if (is_wp_error($response)) {
-            throw new Exception($response->get_error_message());
+            $error_message = $response->get_error_message();
+            error_log("WordPress Error: {$error_message}");
+            throw new Exception($error_message);
         }
 
         $http_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
 
-        $data = json_decode($body, true);
+        // Debug: Log la réponse brute
+        error_log("HTTP Code: {$http_code}");
+        error_log("Response Body: {$body}");
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception('Invalid JSON response from Paigami API');
+        // Vérifier si le body est vide
+        if (empty($body)) {
+            error_log("Empty response body from API");
+            throw new Exception('Empty response from Paigami API');
         }
 
+        $data = json_decode($body, true);
+
+        // Debug: Vérifier l'erreur JSON
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log("JSON Error: " . json_last_error_msg());
+            error_log("Raw Body: {$body}");
+            throw new Exception('Invalid JSON response from Paigami API: ' . json_last_error_msg());
+        }
+
+        // Vérifier le code HTTP
         if ($http_code < 200 || $http_code >= 300) {
             $message = isset($data['message']) ? $data['message'] : 'API request failed';
+            error_log("API Error Response: {$message}");
+
+            // Log les détails supplémentaires si disponibles
+            if (isset($data['errors'])) {
+                error_log("API Errors: " . print_r($data['errors'], true));
+            }
 
             throw new Exception($message, $http_code);
         }
@@ -206,6 +268,27 @@ class Paigami_WC_API
                     $logger->info($message, $context);
                     break;
             }
+        }
+    }
+
+    /**
+     * Méthode de debug pour tester la connexion API
+     */
+    public function test_connection()
+    {
+        error_log("=== Paigami API Test Connection ===");
+        error_log("Base URL: {$this->base_url}");
+        error_log("API Key: " . (!empty($this->api_key) ? substr($this->api_key, 0, 10) . '...' : 'NOT SET'));
+        error_log("Test Mode: " . ($this->test_mode ? 'Yes' : 'No'));
+
+        try {
+            $response = $this->get_countries();
+            error_log("Connection successful!");
+            error_log("Response: " . print_r($response, true));
+            return true;
+        } catch (Exception $e) {
+            error_log("Connection failed: " . $e->getMessage());
+            return false;
         }
     }
 }
