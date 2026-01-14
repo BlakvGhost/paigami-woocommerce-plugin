@@ -182,11 +182,12 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
         <div id="paigami-payment-form">
             <div class="paigami-field">
                 <label for="paigami-country"><?php _e('Country', 'paigami-woocommerce'); ?> <span class="required">*</span></label>
+                <!-- <pre><?php var_dump($countries); ?></pre> -->
                 <select id="paigami-country" name="paigami_country" class="paigami-select" required>
                     <option value=""><?php _e('Select your country', 'paigami-woocommerce'); ?></option>
                     <?php foreach ($countries as $country): ?>
-                        <option value="<?php echo esc_attr($country['id']); ?>" data-currency="<?php echo esc_attr($country['currency']); ?>">
-                            <?php echo esc_html($country['name']); ?> (<?php echo esc_html($country['currency']); ?>)
+                        <option value="<?php echo esc_attr($country['id']); ?>" data-currency="<?php echo esc_attr($country['currency_code']); ?>">
+                            <?php echo esc_html($country['name']); ?> (<?php echo esc_html($country['phone_prefix']); ?>)
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -204,6 +205,10 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
                 <label for="paigami-phone"><?php _e('Phone Number', 'paigami-woocommerce'); ?> <span class="required">*</span></label>
                 <input type="tel" id="paigami-phone" name="paigami_phone" class="paigami-input" placeholder="+229XXXXXXXX" required>
                 <small class="paigami-hint"><?php _e('Enter your phone number with country code', 'paigami-woocommerce'); ?></small>
+            </div>
+
+            <div class="paigami-currency-info" id="paigami-currency-info" style="display: none;">
+                <?php _e('Currency:', 'paigami-woocommerce'); ?> <span id="paigami-currency-display"></span>
             </div>
 
             <div class="paigami-field" id="paigami-otp-field" style="display: none;">
@@ -430,7 +435,7 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
      */
     public function get_post_data()
     {
-        if ( ! empty( $this->data ) && is_array( $this->data ) ) {
+        if (! empty($this->data) && is_array($this->data)) {
             return $this->data;
         }
         return $_POST; // WPCS: CSRF ok, input var ok.

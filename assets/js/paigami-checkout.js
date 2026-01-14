@@ -30,6 +30,7 @@ jQuery(document).ready(function($) {
             this.$walletField = $('#paigami-wallet-field');
             this.$phoneField = $('#paigami-phone-field');
             this.$otpField = $('#paigami-otp-field');
+            this.$currencyInfo = $('#paigami-currency-info');
             this.$conversionInfo = $('#paigami-conversion');
             this.$feesInfo = $('#paigami-fees');
             this.$loading = $('#paigami-loading');
@@ -79,6 +80,12 @@ jQuery(document).ready(function($) {
                 this.populateWalletSelect();
                 this.$walletField.show();
                 
+                // Auto-select wallet if only one available
+                if (this.wallets.length === 1) {
+                    this.$walletSelect.val(this.wallets[0].id || this.wallets[0].wallet_id);
+                    this.handleWalletChange();
+                }
+                
                 // Get checkout options for conversion info
                 this.getCheckoutOptions();
             } else {
@@ -108,11 +115,13 @@ jQuery(document).ready(function($) {
             if (!walletId) {
                 this.$phoneField.hide();
                 this.$otpField.hide();
+                this.$currencyInfo.hide();
                 return;
             }
             
             this.selectedWallet = this.$walletSelect.find('option:selected');
             this.$phoneField.show();
+            this.$currencyInfo.show();
             
             // Show OTP field if required
             var otpRequired = this.selectedWallet.data('otp-required');
@@ -187,6 +196,9 @@ jQuery(document).ready(function($) {
         
         updateConversionInfo: function(data) {
             var countryCurrency = this.selectedCountry.data('currency');
+            
+            // Update currency display
+            $('#paigami-currency-display').text(countryCurrency);
             
             if (countryCurrency !== this.shopCurrency) {
                 var originalAmount = this.formatCurrency(this.orderTotal, this.shopCurrency);
@@ -313,6 +325,7 @@ jQuery(document).ready(function($) {
             this.$walletField.hide();
             this.$phoneField.hide();
             this.$otpField.hide();
+            this.$currencyInfo.hide();
             this.$conversionInfo.hide();
             this.$feesInfo.hide();
             this.selectedWallet = null;
@@ -323,6 +336,7 @@ jQuery(document).ready(function($) {
             this.$walletField.hide();
             this.$phoneField.hide();
             this.$otpField.hide();
+            this.$currencyInfo.hide();
             this.$conversionInfo.hide();
             this.$feesInfo.hide();
         },
