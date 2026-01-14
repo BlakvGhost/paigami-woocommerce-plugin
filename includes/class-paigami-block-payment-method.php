@@ -8,55 +8,75 @@ if (!class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractP
     return;
 }
 
-class Paigami_WC_Block_Payment_Method extends Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType {
-    
+class Paigami_WC_Block_Payment_Method extends Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType
+{
+
     protected $name = 'paigami';
     private $gateway;
     protected $settings;
-    
-    public function __construct($gateway) {
+
+    public function __construct($gateway)
+    {
         $this->gateway = $gateway;
     }
-    
-    public function initialize() {
+
+    public function initialize()
+    {
         $this->settings = get_option('woocommerce_' . $this->name . '_settings', array());
     }
-    
-    public function is_active() {
+
+    public function is_active()
+    {
         return $this->gateway->is_available();
     }
-    
-    public function get_payment_method_script_handles() {
+
+    public function get_payment_method_script_handles()
+    {
+        $script_path = '/assets/js/paigami-blocks.js';
+        $script_url = PAIGAMI_WC_PLUGIN_URL . 'assets/js/paigami-blocks.js';
+        $script_asset_path = PAIGAMI_WC_PLUGIN_DIR . 'assets/js/paigami-blocks.asset.php';
+
+        $script_asset = file_exists($script_asset_path)
+            ? require($script_asset_path)
+            : array(
+                'dependencies' => array(
+                    'wc-blocks-registry',
+                    'wc-settings',
+                    'wp-element',
+                    'wp-i18n',
+                    'wp-polyfill'
+                ),
+                'version' => PAIGAMI_WC_VERSION
+            );
+
         wp_register_script(
             'paigami-blocks-integration',
-            PAIGAMI_WC_PLUGIN_URL . 'assets/js/paigami-blocks.js',
-            array(
-                'wc-blocks-checkout',
-                'wc-blocks-components',
-                'wp-element',
-                'wp-components',
-                'wp-html-entities',
-                'wp-i18n'
-            ),
-            PAIGAMI_WC_VERSION,
+            $script_url,
+            $script_asset['dependencies'],
+            $script_asset['version'],
             true
         );
-        
+
         if (function_exists('wp_set_script_translations')) {
-            wp_set_script_translations('paigami-blocks-integration', 'paigami-woocommerce', PAIGAMI_WC_PLUGIN_DIR . 'languages');
+            wp_set_script_translations(
+                'paigami-blocks-integration',
+                'paigami-woocommerce',
+                PAIGAMI_WC_PLUGIN_DIR . 'languages'
+            );
         }
-        
-        return 'paigami-blocks-integration';
+
+        return array('paigami-blocks-integration');
     }
-    
-    public function get_payment_method_data() {
+
+    public function get_payment_method_data()
+    {
         return array(
             'title' => $this->get_setting('title', 'Mobile Money'),
             'description' => $this->get_setting('description', 'Pay with mobile money (MTN, Moov, Orange, M-Pesa, etc.)'),
             'supports' => $this->gateway->supports,
             'icon' => PAIGAMI_WC_PLUGIN_URL . 'assets/images/paigami-logo.png',
             'countries' => $this->get_cached_countries(),
-            'api_url' => $this->gateway->get_api() ? $this->gateway->get_api()->get_api_url() : '',
+            'api_url' => $this->gateway->get_api()->get_api_url(),
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('paigami_nonce'),
             'strings' => array(
@@ -81,30 +101,28 @@ class Paigami_WC_Block_Payment_Method extends Automattic\WooCommerce\Blocks\Paym
             )
         );
     }
-    
-    protected function get_setting($key, $default = '') {
+
+    protected function get_setting($key, $default = '')
+    {
         return isset($this->settings[$key]) ? $this->settings[$key] : $default;
     }
-    
-    private function get_cached_countries() {
+
+    private function get_cached_countries()
+    {
         $cache_key = 'paigami_countries';
         $countries = wp_cache_get($cache_key);
-        
+
         if (false === $countries) {
             try {
                 $api = $this->gateway->get_api();
-                if ($api) {
-                    $response = $api->get_countries();
-                    $countries = isset($response['data']) ? $response['data'] : array();
-                } else {
-                    $countries = array();
-                }
+                $response = $api->get_countries();
+                $countries = isset($response['data']) ? $response['data'] : array();
                 wp_cache_set($cache_key, $countries, '', 300);
             } catch (Exception $e) {
                 $countries = array();
             }
         }
-        
+
         return $countries;
     }
 }

@@ -1,258 +1,185 @@
-( function () {
+(function () {
     'use strict';
-    
-    // Get dependencies safely
-    const wpElement = window.wp && window.wp.element;
-    const wpComponents = window.wp && window.wp.components;
-    const wpHtmlEntities = window.wp && window.wp.htmlEntities;
-    
-    // Check for multiple possible wcBlocksCheckout locations
-    let wcBlocksCheckout = null;
-    if ( window.wc && window.wc.wcBlocksCheckout ) {
-        wcBlocksCheckout = window.wc.wcBlocksCheckout;
-    } else if ( window.wc && window.wc.blocksCheckout ) {
-        wcBlocksCheckout = window.wc.blocksCheckout;
-    } else if ( window.wcBlocksCheckout ) {
-        wcBlocksCheckout = window.wcBlocksCheckout;
-    }
-    
-    // Check if required dependencies are available
-    if ( !wpElement || !wpComponents ) {
-        console.error( 'Paigami: Required WordPress dependencies not available' );
+
+    // Vérifier que les dépendances WooCommerce Blocks sont disponibles
+    if (typeof window.wc === 'undefined' ||
+        typeof window.wc.wcBlocksRegistry === 'undefined' ||
+        typeof window.wc.wcSettings === 'undefined') {
+        console.warn('Paigami: WooCommerce Blocks dependencies not available');
         return;
     }
-    
-    const { createElement: el, useState, useEffect, useCallback } = wpElement;
-    const { SelectControl, TextControl, Notice, Spinner, __experimentalInputControl: InputControl } = wpComponents;
-    
-    // Safely access with fallbacks
-    const PaymentMethodLabel = wcBlocksCheckout && wcBlocksCheckout.PaymentMethodLabel ? wcBlocksCheckout.PaymentMethodLabel : function( props ) {
-        return el( 'span', {}, props.text || 'Paigami' );
+
+    // Vérifier que React est disponible
+    if (typeof window.wp === 'undefined' ||
+        typeof window.wp.element === 'undefined') {
+        console.warn('Paigami: WordPress element (React) not available');
+        return;
+    }
+
+    const { createElement: el, useState, useEffect, useCallback } = window.wp.element;
+    const { __ } = window.wp.i18n || { __: (text) => text };
+
+    // Récupérer les données de configuration du paiement
+    const settings = window.wc.wcSettings.getSetting('paigami_data', {});
+    const label = settings.title || __('Mobile Money', 'paigami-woocommerce');
+
+    /**
+     * Composant pour le label de la méthode de paiement
+     */
+    const PaigamiLabel = (props) => {
+        const { PaymentMethodLabel } = window.wc.wcBlocksCheckout || {};
+
+        if (PaymentMethodLabel) {
+            return el(PaymentMethodLabel, { text: label });
+        }
+
+        // Fallback si PaymentMethodLabel n'est pas disponible
+        return el('span', { className: 'wc-block-components-payment-method-label' }, label);
     };
-    
-    const usePaymentMethodDataContext = wcBlocksCheckout && wcBlocksCheckout.usePaymentMethodDataContext ? wcBlocksCheckout.usePaymentMethodDataContext : function() {
-        return {
-            cartTotals: {
-                total_price: 0,
-                currency_code: 'USD'
-            }
-        };
-    };
-    
-    const decodeEntities = wpHtmlEntities && wpHtmlEntities.decodeEntities ? wpHtmlEntities.decodeEntities : function( text ) {
-        return text;
-    };
-    
-    const PaigamiPaymentMethod = ( { billing, shippingData, eventRegistration, emitResponse } ) => {
+
+    /**
+     * Composant principal pour le formulaire de paiement
+     */
+    const PaigamiPaymentMethod = (props) => {
+        const { eventRegistration, emitResponse } = props;
         const { onPaymentSetup } = eventRegistration;
-        const [paymentData, setPaymentData] = useState( {
+
+        // État du formulaire
+        const [paymentData, setPaymentData] = useState({
             country: '',
             wallet: '',
             phone: '',
             otp: '',
             wallets: [],
-            selectedCountryData: null,
-            selectedWalletData: null,
             loading: false,
-            error: '',
-            checkoutOptions: null
-        } );
-        
-        const { cartTotals } = usePaymentMethodDataContext();
-        const paymentMethodData = window.wc.wcSettings.getPaymentMethodData( 'paigami' );
-        
-        const fetchWallets = useCallback( async ( countryId ) => {
-            setPaymentData( prev => ( { ...prev, loading: true, error: '', wallet: '', wallets: [] } ) );
-            
+            error: null
+        });
+
+        /**
+         * Charger les wallets pour un pays
+         */
+        const loadWallets = useCallback(async (countryId) => {
+            if (!countryId) {
+                setPaymentData(prev => ({ ...prev, wallets: [], wallet: '' }));
+                return;
+            }
+
+            setPaymentData(prev => ({ ...prev, loading: true, error: null }));
+
             try {
-                const response = await fetch( paymentMethodData.ajax_url, {
+                const formData = new FormData();
+                formData.append('action', 'paigami_get_wallets');
+                formData.append('nonce', settings.nonce);
+                formData.append('country_id', countryId);
+
+                const response = await fetch(settings.ajax_url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams( {
-                        action: 'paigami_get_wallets',
-                        nonce: paymentMethodData.nonce,
-                        country_id: countryId
-                    } )
-                } );
-                
+                    body: formData
+                });
+
                 const data = await response.json();
-                
-                if ( data.success ) {
-                    setPaymentData( prev => ( {
+
+                if (data.success && data.data) {
+                    setPaymentData(prev => ({
                         ...prev,
-                        wallets: data.data || [],
+                        wallets: Array.isArray(data.data) ? data.data : [],
                         loading: false
-                    } ) );
+                    }));
                 } else {
-                    setPaymentData( prev => ( {
-                        ...prev,
-                        error: data.message || 'Failed to load wallets',
-                        loading: false
-                    } ) );
+                    throw new Error(data.message || 'Failed to load wallets');
                 }
-            } catch ( error ) {
-                setPaymentData( prev => ( {
+            } catch (error) {
+                setPaymentData(prev => ({
                     ...prev,
-                    error: error.message || 'Network error',
-                    loading: false
-                } ) );
+                    loading: false,
+                    error: error.message
+                }));
             }
-        }, [paymentMethodData.ajax_url, paymentMethodData.nonce] );
-        
-        const fetchCheckoutOptions = useCallback( async ( countryId, walletId ) => {
-            if ( !cartTotals?.total_price ) return;
-            
-            try {
-                const response = await fetch( paymentMethodData.ajax_url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams( {
-                        action: 'paigami_get_checkout_options',
-                        nonce: paymentMethodData.nonce,
-                        country_id: countryId,
-                        amount: cartTotals.total_price,
-                        currency: cartTotals.currency_code
-                    } )
-                } );
-                
-                const data = await response.json();
-                
-                if ( data.success ) {
-                    setPaymentData( prev => ( {
-                        ...prev,
-                        checkoutOptions: data.data
-                    } ) );
-                }
-            } catch ( error ) {
-                console.error( 'Checkout options error:', error );
-            }
-        }, [paymentMethodData.ajax_url, paymentMethodData.nonce, cartTotals] );
-        
-        const handleCountryChange = useCallback( ( value ) => {
-            const countryData = paymentMethodData.countries.find( c => c.id === value );
-            
-            setPaymentData( prev => ( {
+        }, [settings.ajax_url, settings.nonce]);
+
+        /**
+         * Gérer le changement de pays
+         */
+        const handleCountryChange = (event) => {
+            const countryId = event.target.value;
+            setPaymentData(prev => ({
                 ...prev,
-                country: value,
-                selectedCountryData: countryData,
+                country: countryId,
                 wallet: '',
-                selectedWalletData: null,
-                otp: '',
-                checkoutOptions: null
-            } ) );
-            
-            if ( value ) {
-                fetchWallets( value );
+                wallets: []
+            }));
+
+            if (countryId) {
+                loadWallets(countryId);
             }
-        }, [paymentMethodData.countries, fetchWallets] );
-        
-        const handleWalletChange = useCallback( ( value ) => {
-            const walletData = paymentData.wallets.find( w => w.id === value || w.wallet_id === value );
-            
-            setPaymentData( prev => ( {
-                ...prev,
-                wallet: value,
-                selectedWalletData: walletData,
-                otp: walletData?.otp_required ? '' : prev.otp
-            } ) );
-            
-            if ( value && paymentData.selectedCountryData ) {
-                fetchCheckoutOptions( paymentData.selectedCountryData.id, value );
-            }
-        }, [paymentData.wallets, paymentData.selectedCountryData, fetchCheckoutOptions] );
-        
-        const getCountryOptions = () => {
-            return paymentMethodData.countries.map( country => ( {
-                label: `${ country.name } (${ country.currency })`,
-                value: country.id
-            } ) );
         };
-        
-        const getWalletOptions = () => {
-            return paymentData.wallets.map( wallet => ( {
-                label: wallet.name || wallet.wallet_name,
-                value: wallet.id || wallet.wallet_id
-            } ) );
-        };
-        
-        const renderConversionInfo = () => {
-            if ( !paymentData.checkoutOptions ) return null;
-            
-            const countryCurrency = paymentData.selectedCountryData?.currency;
-            const shopCurrency = cartTotals?.currency_code;
-            
-            if ( countryCurrency !== shopCurrency ) {
-                return el(
-                    'div',
-                    { className: 'paigami-conversion-info' },
-                    el(
-                        'div',
-                        { className: 'conversion-amount' },
-                        `${ shopCurrency } ${ cartTotals?.total_price || 0 } → ${ countryCurrency } ${ cartTotals?.total_price || 0 }`
-                    ),
-                    el(
-                        'small',
-                        { className: 'conversion-rate' },
-                        paymentMethodData.strings.conversion_info
-                    )
-                );
-            }
-            
-            return null;
-        };
-        
-        const renderFeesInfo = () => {
-            if ( !paymentData.checkoutOptions?.fees?.total ) return null;
-            
-            const fees = paymentData.checkoutOptions.fees;
-            const totalFees = fees.total / 100;
-            const totalAmount = ( fees.net_amount + fees.total ) / 100;
-            
-            return el(
-                'div',
-                { className: 'paigami-fees-info' },
-                el(
-                    'div',
-                    { className: 'fees-breakdown' },
-                    `${ paymentMethodData.strings.fees_info }: ${ paymentMethodData.currency || '' } ${ totalFees.toFixed( 2 ) }`
-                ),
-                el(
-                    'div',
-                    { className: 'total-amount' },
-                    `${ paymentMethodData.strings.total_amount }: ${ paymentMethodData.currency || '' } ${ totalAmount.toFixed( 2 ) }`
-                )
+
+        /**
+         * Gérer le changement de wallet
+         */
+        const handleWalletChange = (event) => {
+            const walletId = event.target.value;
+            const wallet = paymentData.wallets.find(w =>
+                String(w.id || w.wallet_id) === String(walletId)
             );
+
+            setPaymentData(prev => ({
+                ...prev,
+                wallet: walletId,
+                otp: wallet?.otp_required ? prev.otp : ''
+            }));
         };
-        
-        useEffect( () => {
-            const unsubscribe = onPaymentSetup( async () => {
-                if ( !paymentData.country || !paymentData.wallet || !paymentData.phone ) {
+
+        /**
+         * Valider les données avant le paiement
+         */
+        useEffect(() => {
+            const unsubscribe = onPaymentSetup(async () => {
+                // Validation du pays
+                if (!paymentData.country) {
                     return {
                         type: emitResponse.responseTypes.ERROR,
-                        message: paymentMethodData.strings.country_required
+                        message: settings.strings?.country_required || 'Please select your country'
                     };
                 }
-                
+
+                // Validation du wallet
+                if (!paymentData.wallet) {
+                    return {
+                        type: emitResponse.responseTypes.ERROR,
+                        message: settings.strings?.wallet_required || 'Please select your provider'
+                    };
+                }
+
+                // Validation du téléphone
+                if (!paymentData.phone) {
+                    return {
+                        type: emitResponse.responseTypes.ERROR,
+                        message: settings.strings?.phone_required || 'Phone number is required'
+                    };
+                }
+
                 const phoneRegex = /^\+[1-9]\d{1,14}$/;
-                if ( !phoneRegex.test( paymentData.phone ) ) {
+                if (!phoneRegex.test(paymentData.phone)) {
                     return {
                         type: emitResponse.responseTypes.ERROR,
-                        message: paymentMethodData.strings.invalid_phone
+                        message: settings.strings?.invalid_phone || 'Invalid phone number format'
                     };
                 }
-                
-                const otpRequired = paymentData.selectedWalletData?.otp_required;
-                if ( otpRequired && !paymentData.otp ) {
+
+                // Validation OTP si requis
+                const wallet = paymentData.wallets.find(w =>
+                    String(w.id || w.wallet_id) === String(paymentData.wallet)
+                );
+
+                if (wallet?.otp_required && !paymentData.otp) {
                     return {
                         type: emitResponse.responseTypes.ERROR,
-                        message: paymentMethodData.strings.otp_required
+                        message: settings.strings?.otp_required || 'OTP code is required'
                     };
                 }
-                
+
+                // Données valides
                 return {
                     type: emitResponse.responseTypes.SUCCESS,
                     meta: {
@@ -260,166 +187,169 @@
                             paigami_country: paymentData.country,
                             paigami_wallet: paymentData.wallet,
                             paigami_phone: paymentData.phone,
-                            paigami_otp: paymentData.otp,
-                        },
+                            paigami_otp: paymentData.otp
+                        }
                     }
                 };
-            } );
-            
-            return () => unsubscribe();
-        }, [
-            paymentData,
-            onPaymentSetup,
-            emitResponse,
-            paymentMethodData
-        ] );
-        
+            });
+
+            return unsubscribe;
+        }, [paymentData, onPaymentSetup, emitResponse, settings]);
+
+        // Récupérer le wallet sélectionné
+        const selectedWallet = paymentData.wallets.find(w =>
+            String(w.id || w.wallet_id) === String(paymentData.wallet)
+        );
+
         return el(
             'div',
             { className: 'paigami-blocks-payment-form' },
-            paymentMethodData.description && el(
+
+            // Description
+            settings.description && el(
                 'p',
-                { className: 'paigami-description' },
-                decodeEntities( paymentMethodData.description )
+                { className: 'wc-block-components-payment-method-content__description' },
+                settings.description
             ),
-            
+
+            // Sélection du pays
             el(
-                SelectControl,
-                {
-                    label: paymentMethodData.strings.select_country,
-                    value: paymentData.country,
-                    options: [
-                        { label: paymentMethodData.strings.select_country, value: '' },
-                        ...getCountryOptions()
-                    ],
-                    onChange: handleCountryChange,
-                    disabled: paymentData.loading
-                }
+                'div',
+                { className: 'wc-block-components-text-input' },
+                el('label', { htmlFor: 'paigami-country' },
+                    settings.strings?.select_country || 'Select your country'
+                ),
+                el(
+                    'select',
+                    {
+                        id: 'paigami-country',
+                        className: 'wc-block-components-select',
+                        value: paymentData.country,
+                        onChange: handleCountryChange,
+                        disabled: paymentData.loading
+                    },
+                    el('option', { value: '' },
+                        settings.strings?.select_country || 'Select your country'
+                    ),
+                    settings.countries && Array.isArray(settings.countries) &&
+                    settings.countries.map(country =>
+                        el('option', {
+                            key: country.id,
+                            value: country.id
+                        }, `${country.name} (${country.currency})`)
+                    )
+                )
             ),
-            
+
+            // Sélection du wallet
             paymentData.wallets.length > 0 && el(
-                SelectControl,
-                {
-                    label: paymentMethodData.strings.select_wallet,
-                    value: paymentData.wallet,
-                    options: [
-                        { label: paymentMethodData.strings.select_wallet, value: '' },
-                        ...getWalletOptions()
-                    ],
-                    onChange: handleWalletChange,
-                    disabled: paymentData.loading
-                }
+                'div',
+                { className: 'wc-block-components-text-input' },
+                el('label', { htmlFor: 'paigami-wallet' },
+                    settings.strings?.select_wallet || 'Select your provider'
+                ),
+                el(
+                    'select',
+                    {
+                        id: 'paigami-wallet',
+                        className: 'wc-block-components-select',
+                        value: paymentData.wallet,
+                        onChange: handleWalletChange,
+                        disabled: paymentData.loading
+                    },
+                    el('option', { value: '' },
+                        settings.strings?.select_wallet || 'Select your provider'
+                    ),
+                    paymentData.wallets.map(wallet =>
+                        el('option', {
+                            key: wallet.id || wallet.wallet_id,
+                            value: wallet.id || wallet.wallet_id
+                        }, wallet.name || wallet.wallet_name)
+                    )
+                )
             ),
-            
+
+            // Champ téléphone
             paymentData.wallet && el(
                 'div',
-                { className: 'paigami-phone-field' },
-                el(
-                    InputControl,
-                    {
-                        label: paymentMethodData.strings.phone_label,
-                        placeholder: paymentMethodData.strings.phone_placeholder,
-                        value: paymentData.phone,
-                        onChange: ( value ) => setPaymentData( prev => ( { ...prev, phone: value } ) ),
-                        disabled: paymentData.loading
-                    }
+                { className: 'wc-block-components-text-input' },
+                el('label', { htmlFor: 'paigami-phone' },
+                    settings.strings?.phone_label || 'Phone Number'
                 ),
-                el(
-                    'small',
-                    { className: 'paigami-help' },
-                    paymentMethodData.strings.phone_help
+                el('input', {
+                    id: 'paigami-phone',
+                    type: 'tel',
+                    className: 'wc-block-components-text-input__input',
+                    placeholder: settings.strings?.phone_placeholder || '+229XXXXXXXX',
+                    value: paymentData.phone,
+                    onChange: (e) => setPaymentData(prev => ({
+                        ...prev,
+                        phone: e.target.value
+                    })),
+                    disabled: paymentData.loading
+                }),
+                el('small', { className: 'wc-block-components-validation-error' },
+                    settings.strings?.phone_help || 'Enter your phone number with country code'
                 )
             ),
-            
-            paymentData.selectedWalletData?.otp_required && el(
+
+            // Champ OTP si requis
+            selectedWallet?.otp_required && el(
                 'div',
-                { className: 'paigami-otp-field' },
-                el(
-                    InputControl,
-                    {
-                        label: paymentMethodData.strings.otp_label,
-                        placeholder: paymentMethodData.strings.otp_placeholder,
-                        value: paymentData.otp,
-                        onChange: ( value ) => setPaymentData( prev => ( { ...prev, otp: value } ) ),
-                        maxLength: 6,
-                        disabled: paymentData.loading
-                    }
+                { className: 'wc-block-components-text-input' },
+                el('label', { htmlFor: 'paigami-otp' },
+                    settings.strings?.otp_label || 'OTP Code'
                 ),
-                el(
-                    'small',
-                    { className: 'paigami-help' },
-                    paymentMethodData.strings.otp_help
+                el('input', {
+                    id: 'paigami-otp',
+                    type: 'text',
+                    className: 'wc-block-components-text-input__input',
+                    placeholder: settings.strings?.otp_placeholder || '123456',
+                    value: paymentData.otp,
+                    onChange: (e) => setPaymentData(prev => ({
+                        ...prev,
+                        otp: e.target.value
+                    })),
+                    maxLength: 6,
+                    disabled: paymentData.loading
+                }),
+                el('small', { className: 'wc-block-components-validation-error' },
+                    settings.strings?.otp_help || 'Enter the 6-digit code sent to your phone'
                 )
             ),
-            
-            renderConversionInfo(),
-            renderFeesInfo(),
-            
+
+            // Message d'erreur
             paymentData.error && el(
-                Notice,
-                { status: 'error', isDismissible: false },
+                'div',
+                { className: 'wc-block-components-validation-error', role: 'alert' },
                 paymentData.error
             ),
-            
+
+            // Indicateur de chargement
             paymentData.loading && el(
                 'div',
-                { className: 'paigami-loading' },
-                el( Spinner ),
-                el( 'span', {}, paymentMethodData.strings.processing )
+                { className: 'wc-block-components-spinner' },
+                settings.strings?.loading || 'Loading...'
             )
         );
     };
-    
-    const PaigamiPaymentMethodLabel = ( { ...props } ) => {
-        const paymentMethodData = window.wc.wcSettings.getPaymentMethodData( 'paigami' );
-        
-        return el(
-            PaymentMethodLabel,
-            {
-                ...props,
-                text: paymentMethodData?.title || 'Mobile Money',
-                icons: paymentMethodData?.icon ? [
-                    el( 'img', {
-                        src: paymentMethodData.icon,
-                        alt: 'Paigami',
-                        style: { width: '24px', height: '24px' }
-                    } )
-                ] : []
-            }
-        );
-    };
-    
-    const PaigamiPaymentMethodContent = ( props ) => {
-        const { billing } = props;
-        
-        return el( PaigamiPaymentMethod, {
-            ...props,
-            billing,
-            shippingData: {},
-            eventRegistration: props.eventRegistration,
-            emitResponse: props.emitResponse
-        } );
-    };
-    
-    // Register the payment method with WooCommerce Blocks
-    if ( window.wc && window.wc.wcBlocksRegistry && window.wc.wcSettings ) {
-        try {
-            window.wc.wcBlocksRegistry.registerPaymentMethod( {
-                name: 'paigami',
-                label: PaigamiPaymentMethodLabel,
-                content: PaigamiPaymentMethodContent,
-                edit: () => null,
-                canMakePayment: () => true,
-                ariaLabel: 'Pay with Paigami Unified Payments',
-                supports: {
-                    features: window.wc.wcSettings.getPaymentMethodData( 'paigami' )?.supports || []
-                }
-            } );
-        } catch ( error ) {
-            console.error( 'Paigami: Failed to register payment method', error );
+
+    /**
+     * Configuration de la méthode de paiement
+     */
+    const PaigamiPaymentMethodConfig = {
+        name: 'paigami',
+        label: el(PaigamiLabel),
+        content: el(PaigamiPaymentMethod),
+        edit: el(PaigamiPaymentMethod),
+        canMakePayment: () => true,
+        ariaLabel: label,
+        supports: {
+            features: settings.supports || ['products']
         }
-    } else {
-        console.error( 'Paigami: WooCommerce Blocks registry not available' );
-    }
-    
-} )();
+    };
+
+    // Enregistrer la méthode de paiement
+    window.wc.wcBlocksRegistry.registerPaymentMethod(PaigamiPaymentMethodConfig);
+
+})();
