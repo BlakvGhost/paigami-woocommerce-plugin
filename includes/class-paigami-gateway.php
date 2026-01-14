@@ -182,23 +182,34 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
         <div id="paigami-payment-form">
             <div class="paigami-field">
                 <label for="paigami-country"><?php _e('Country', 'paigami-woocommerce'); ?> <span class="required">*</span></label>
-                <!-- <pre><?php var_dump($countries); ?></pre> -->
                 <select id="paigami-country" name="paigami_country" class="paigami-select" required>
                     <option value=""><?php _e('Select your country', 'paigami-woocommerce'); ?></option>
                     <?php foreach ($countries as $country): ?>
-                        <option value="<?php echo esc_attr($country['id']); ?>" data-currency="<?php echo esc_attr($country['currency_code']); ?>">
-                            <?php echo esc_html($country['name']); ?> (<?php echo esc_html($country['phone_prefix']); ?>)
+                        <option
+                            value="<?php echo esc_attr($country['id']); ?>"
+                            data-currency="<?php echo esc_attr($country['currency_code'] ?? $country['currency']['code'] ?? ''); ?>"
+                            data-phone-prefix="<?php echo esc_attr($country['phone_prefix'] ?? ''); ?>"
+                            data-country-code="<?php echo esc_attr($country['iso_code'] ?? ''); ?>">
+                            <?php echo esc_html($country['name']); ?> (<?php echo esc_html($country['currency_code'] ?? $country['currency']['code'] ?? ''); ?>)
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
             <div class="paigami-field" id="paigami-wallet-field" style="display: none;">
-                <label for="paigami-wallet"><?php _e('Mobile Money Provider', 'paigami-woocommerce'); ?> <span class="required">*</span></label>
-                <select id="paigami-wallet" name="paigami_wallet" class="paigami-select" required>
-                    <option value=""><?php _e('Select your provider', 'paigami-woocommerce'); ?></option>
-                </select>
+                <label><?php _e('Mobile Money Provider', 'paigami-woocommerce'); ?> <span class="required">*</span></label>
+                <input type="hidden" id="paigami-wallet" name="paigami_wallet" value="">
+                <div class="paigami-wallets-container">
+                    <div id="paigami-wallet-rows" class="paigami-wallet-rows"></div>
+                </div>
                 <div class="wallet-logo" id="wallet-logo"></div>
+            </div>
+
+            <div class="paigami-field" id="paigami-currency-info" style="display: none;">
+                <div class="currency-display">
+                    <span class="currency-label"><?php _e('Payment currency:', 'paigami-woocommerce'); ?></span>
+                    <strong id="paigami-currency-display"></strong>
+                </div>
             </div>
 
             <div class="paigami-field" id="paigami-phone-field" style="display: none;">
@@ -207,14 +218,10 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
                 <small class="paigami-hint"><?php _e('Enter your phone number with country code', 'paigami-woocommerce'); ?></small>
             </div>
 
-            <div class="paigami-currency-info" id="paigami-currency-info" style="display: none;">
-                <?php _e('Currency:', 'paigami-woocommerce'); ?> <span id="paigami-currency-display"></span>
-            </div>
-
             <div class="paigami-field" id="paigami-otp-field" style="display: none;">
-                <label for="paigami-otp"><?php _e('OTP Code', 'paigami-woocommerce'); ?> <span class="required">*</span></label>
+                <label for="paigami-otp"><?php _e('OTP Code', 'paigami-woocommerce'); ?></label>
                 <input type="text" id="paigami-otp" name="paigami_otp" class="paigami-input" placeholder="123456" maxlength="6">
-                <small class="paigami-hint"><?php _e('Enter the 6-digit code sent to your phone', 'paigami-woocommerce'); ?></small>
+                <small class="paigami-hint"><?php _e('Enter the 6-digit code if required', 'paigami-woocommerce'); ?></small>
             </div>
 
             <div class="paigami-conversion-info" id="paigami-conversion" style="display: none;">
@@ -249,20 +256,23 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
         $country = isset($_POST['paigami_country']) ? sanitize_text_field($_POST['paigami_country']) : '';
         $wallet = isset($_POST['paigami_wallet']) ? sanitize_text_field($_POST['paigami_wallet']) : '';
         $phone = isset($_POST['paigami_phone']) ? sanitize_text_field($_POST['paigami_phone']) : '';
-        $otp = isset($_POST['paigami_otp']) ? sanitize_text_field($_POST['paigami_otp']) : '';
 
         if (empty($country)) {
             wc_add_notice(__('Please select your country.', 'paigami-woocommerce'), 'error');
+            return false;
         }
 
         if (empty($wallet)) {
             wc_add_notice(__('Please select your mobile money provider.', 'paigami-woocommerce'), 'error');
+            return false;
         }
 
         if (empty($phone)) {
             wc_add_notice(__('Please enter your phone number.', 'paigami-woocommerce'), 'error');
+            return false;
         } elseif (!preg_match('/^\+[1-9]\d{1,14}$/', $phone)) {
             wc_add_notice(__('Please enter a valid phone number with country code.', 'paigami-woocommerce'), 'error');
+            return false;
         }
 
         return true;
@@ -367,8 +377,8 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
             }
 
             $payment_data = array(
-                'amount' => (int) ($order->get_total() * 100),
-                'currency_id' => $this->get_currency_id($order->get_currency()),
+                'amount' => (float) ($order->get_total()),
+                'currency' => $this->get_currency_id($order->get_currency()),
                 'wallet_provider_id' => $wallet,
                 'country_id' => $country,
                 'customer_phone' => $phone,
