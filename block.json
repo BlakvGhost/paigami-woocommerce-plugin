@@ -1,0 +1,30 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "paigami/payment-method",
+    "version": "1.0.0",
+    "title": "Paigami Unified Payments",
+    "category": "woocommerce",
+    "description": "Accept mobile money payments across Africa through Paigami",
+    "keywords": ["payment", "mobile money", "africa", "paigami"],
+    "textdomain": "paigami-woocommerce",
+    "supports": {
+        "html": false,
+        "multiple": false,
+        "reusable": false,
+        "inserter": false
+    },
+    "attributes": {
+        "lock": {
+            "type": "object",
+            "default": {
+                "remove": true,
+                "move": true
+            }
+        }
+    },
+    "editorScript": "file:./../js/paigami-blocks.js",
+    "script": "file:./../js/paigami-blocks.js",
+    "style": "file:./../css/paigami-checkout.css",
+    "editorStyle": "file:./../css/paigami-checkout.css"
+}

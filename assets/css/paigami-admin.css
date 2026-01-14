@@ -1,0 +1,208 @@
+/* Paigami Admin Styles */
+
+.paigami-admin-notice {
+    border-left: 4px solid #0073aa;
+    padding: 12px;
+    margin: 15px 0;
+    background: #f0f6fc;
+    border-radius: 4px;
+}
+
+.paigami-admin-notice.error {
+    border-left-color: #e74c3c;
+    background: #fdf2f2;
+}
+
+.paigami-admin-notice.success {
+    border-left-color: #00a32a;
+    background: #f0f6fc;
+}
+
+.paigami-admin-notice h4 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.paigami-admin-notice p {
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+}
+
+.paigami-webhook-url {
+    background: #f8f9f9;
+    border: 1px solid #ddd;
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    word-break: break-all;
+    margin: 10px 0;
+}
+
+.paigami-field-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.paigami-field-row .form-field {
+    flex: 1;
+}
+
+.paigami-field-row .form-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.paigami-field-row .form-field input[type="text"],
+.paigami-field-row .form-field input[type="password"],
+.paigami-field-row .form-field select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.paigami-field-row .form-field input:focus,
+.paigami-field-row .form-field select:focus {
+    border-color: #0073aa;
+    outline: none;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+.paigami-test-mode-indicator {
+    display: inline-block;
+    padding: 4px 8px;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fbbf24;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.paigami-test-mode-indicator.production {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #34d399;
+}
+
+.paigami-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.paigami-status-indicator.online {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.paigami-status-indicator.offline {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.paigami-status-indicator.testing {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.paigami-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.paigami-help-text {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.paigami-form-section {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #fff;
+}
+
+.paigami-form-section h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.paigami-form-section table {
+    margin: 0;
+}
+
+.paigami-form-section table th {
+    font-weight: 600;
+    color: #333;
+}
+
+.paigami-form-section table td {
+    vertical-align: top;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .paigami-field-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .paigami-webhook-url {
+        font-size: 12px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .paigami-admin-notice {
+        background: #1e3a5f;
+        color: #e2e8f0;
+    }
+    
+    .paigami-admin-notice.error {
+        background: #3f1a1a;
+        color: #fca5a5;
+    }
+    
+    .paigami-admin-notice.success {
+        background: #1a3a2a;
+        color: #86efac;
+    }
+    
+    .paigami-webhook-url {
+        background: #2a2a2a;
+        border-color: #444;
+        color: #e2e8f0;
+    }
+    
+    .paigami-form-section {
+        background: #1e1e1e;
+        border-color: #444;
+    }
+    
+    .paigami-form-section h3 {
+        color: #e2e8f0;
+        border-bottom-color: #444;
+    }
+}
