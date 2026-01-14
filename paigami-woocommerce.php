@@ -164,8 +164,8 @@ class Paigami_WC_Plugin {
     private function get_api_url() {
         $test_mode = 'yes' === get_option('paigami_test_mode', 'yes');
         return $test_mode 
-            ? 'http://127.0.0.1:8002/api/v1' 
-            : 'http://127.0.0.1:8002/api/v1';
+            ? 'http://127.0.0.1:8004/api/v1' 
+            : 'http://127.0.0.1:8004/api/v1';
     }
 }
 

@@ -13,12 +13,12 @@ class Paigami_WC_API {
     private $timeout = 30;
     
     public function __construct() {
-        $this->api_key = $this->get_option('paigami_api_key');
-        $this->secret_key = $this->get_option('paigami_secret_key');
-        $this->test_mode = 'yes' === $this->get_option('paigami_test_mode', 'yes');
+        $this->api_key = $this->get_option('api_key');
+        $this->secret_key = $this->get_option('secret_key');
+        $this->test_mode = 'yes' === $this->get_option('test_mode', 'yes');
         $this->base_url = $this->test_mode 
-            ? 'http://127.0.0.1:8002/api/v1' 
-            : 'http://127.0.0.1:8002/api/v1';
+            ? 'http://127.0.0.1:8004/api/v1' 
+            : 'http://127.0.0.1:8004/api/v1';
     }
     
     private function get_option($key, $default = null) {
@@ -26,7 +26,7 @@ class Paigami_WC_API {
     }
     
     public function is_configured() {
-        return !empty($this->api_key) && !empty($this->secret_key);
+        return !empty($this->api_key);
     }
     
     public function get_api_url() {
@@ -170,7 +170,7 @@ class Paigami_WC_API {
     }
     
     public function log($message, $level = 'info') {
-        if ($this->get_option('paigami_debug_mode', 'no') === 'yes') {
+        if ($this->get_option('debug_mode', 'no') === 'yes') {
             $logger = wc_get_logger();
             $context = array('source' => 'paigami-woocommerce');
             

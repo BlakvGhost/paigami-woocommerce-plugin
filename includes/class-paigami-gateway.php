@@ -112,7 +112,7 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
             'secret_key' => array(
                 'title' => __('Secret Key', 'paigami-woocommerce'),
                 'type' => 'text',
-                'description' => __('Get your secret keys from your Paigami dashboard.', 'paigami-woocommerce'),
+                'description' => __('Get your secret key from your Paigami dashboard for webhook verification.', 'paigami-woocommerce'),
                 'default' => '',
                 'desc_tip' => true
             ),
