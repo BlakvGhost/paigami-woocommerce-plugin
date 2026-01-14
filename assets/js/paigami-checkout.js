@@ -1,13 +1,23 @@
 jQuery(document).ready(function($) {
     'use strict';
     
+    console.log('Paigami checkout JS loaded');
+    
     // Check if we're in WooCommerce Blocks checkout
     function isBlocksCheckout() {
         return document.querySelector('.wc-block-checkout') !== null || 
-               typeof wp !== 'undefined' && 
-               wp.blocks && 
-               wp.blocks.checkout ||
-               document.querySelector('.wc-block-components-checkout-step') !== null;
+               document.querySelector('.wc-block-components-checkout-step') !== null ||
+               (typeof wp !== 'undefined' && 
+                wp.blocks && 
+                wp.blocks.checkout);
+    }
+    
+    console.log('Is blocks checkout:', isBlocksCheckout());
+    
+    // Only initialize for classic checkout
+    if (isBlocksCheckout()) {
+        console.log('Skipping classic checkout init (using blocks)');
+        return;
     }
     
     // Only initialize for classic checkout

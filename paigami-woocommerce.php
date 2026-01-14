@@ -83,33 +83,35 @@ class Paigami_WC_Plugin {
     }
     
     public function enqueue_scripts() {
-        if (is_checkout()) {
-            wp_enqueue_script(
-                'paigami-checkout',
-                PAIGAMI_WC_PLUGIN_URL . 'assets/js/paigami-checkout.js',
-                array('jquery', 'wc-checkout'),
-                PAIGAMI_WC_VERSION,
-                true
-            );
-            
-            wp_enqueue_style(
-                'paigami-checkout',
-                PAIGAMI_WC_PLUGIN_URL . 'assets/css/paigami-checkout.css',
-                array(),
-                PAIGAMI_WC_VERSION
-            );
-            
-            wp_localize_script('paigami-checkout', 'paigami_params', array(
-                'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('paigami_nonce'),
-                'api_url' => $this->get_api_url(),
-                'loading_text' => __('Chargement...', 'paigami-woocommerce'),
-                'select_country' => __('Sélectionner votre pays', 'paigami-woocommerce'),
-                'select_wallet' => __('Sélectionner votre opérateur', 'paigami-woocommerce'),
-                'phone_required' => __('Le numéro de téléphone est requis', 'paigami-woocommerce'),
-                'otp_required' => __('Le code OTP est requis pour cet opérateur', 'paigami-woocommerce'),
-            ));
+        if (!is_checkout() && !is_wc_endpoint_url('order-pay')) {
+            return;
         }
+        
+        wp_enqueue_script(
+            'paigami-checkout',
+            PAIGAMI_WC_PLUGIN_URL . 'assets/js/paigami-checkout.js',
+            array('jquery'),
+            PAIGAMI_WC_VERSION,
+            true
+        );
+        
+        wp_enqueue_style(
+            'paigami-checkout',
+            PAIGAMI_WC_PLUGIN_URL . 'assets/css/paigami-checkout.css',
+            array(),
+            PAIGAMI_WC_VERSION
+        );
+        
+        wp_localize_script('paigami-checkout', 'paigami_params', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('paigami_nonce'),
+            'api_url' => $this->get_api_url(),
+            'loading_text' => __('Chargement...', 'paigami-woocommerce'),
+            'select_country' => __('Sélectionner votre pays', 'paigami-woocommerce'),
+            'select_wallet' => __('Sélectionner votre opérateur', 'paigami-woocommerce'),
+            'phone_required' => __('Le numéro de téléphone est requis', 'paigami-woocommerce'),
+            'otp_required' => __('Le code OTP est requis pour cet opérateur', 'paigami-woocommerce'),
+        ));
     }
     
     public function admin_enqueue_scripts($hook) {
