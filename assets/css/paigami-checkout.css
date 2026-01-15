@@ -11,6 +11,10 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+#paigami-payment-form {
+    padding: 18px!important;
+}
+
 /* WooCommerce Blocks specific styles */
 .paigami-blocks-payment-form {
     margin: 15px 0;

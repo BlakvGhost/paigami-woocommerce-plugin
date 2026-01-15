@@ -86,7 +86,7 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
                 'title' => __('Title', 'paigami-woocommerce'),
                 'type' => 'text',
                 'description' => __('This controls the title which the user sees during checkout.', 'paigami-woocommerce'),
-                'default' => __('Mobile Money', 'paigami-woocommerce'),
+                'default' => __('Mobile Money(Paigami)', 'paigami-woocommerce'),
                 'desc_tip' => true
             ),
             'description' => array(
@@ -214,8 +214,8 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
 
             <div class="paigami-field" id="paigami-phone-field" style="display: none;">
                 <label for="paigami-phone"><?php _e('Phone Number', 'paigami-woocommerce'); ?> <span class="required">*</span></label>
-                <input type="tel" id="paigami-phone" name="paigami_phone" class="paigami-input" placeholder="+229XXXXXXXX" required>
-                <small class="paigami-hint"><?php _e('Enter your phone number with country code', 'paigami-woocommerce'); ?></small>
+                <input type="tel" id="paigami-phone" name="paigami_phone" class="paigami-input" placeholder="XXXXXXXX" required>
+                <small class="paigami-hint"><?php _e('Enter your phone number without country code', 'paigami-woocommerce'); ?></small>
             </div>
 
             <div class="paigami-field" id="paigami-otp-field" style="display: none;">
@@ -414,6 +414,8 @@ class Paigami_WC_Gateway extends WC_Payment_Gateway
                 $order->save();
 
                 WC()->cart->empty_cart();
+
+                // Redirect User to waiting page for webhook about transaction status.
 
                 if (!empty($payment_response['payment_url'])) {
                     return array(
