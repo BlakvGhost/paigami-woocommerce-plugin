@@ -1,0 +1,8 @@
+{
+  "intelephense.environment.includePaths": [
+    "vendor/php-stubs/wordpress-stubs",
+    "vendor/php-stubs/woocommerce-stubs"
+  ],
+  "intelephense.diagnostics.undefinedFunctions": false,
+  "intelephense.diagnostics.undefinedTypes": false
+}

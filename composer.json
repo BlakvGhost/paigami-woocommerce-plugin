@@ -1,21 +1,27 @@
 {
-    "name": "ferrayds/paigami-woocommerce-plugin",
-    "description": "Paigami is a smart payment orchestrator that automatically routes payments to the best available gateway based on country, fees, and success rates.",
-    "type": "library",
-    "require-dev": {
-        "php-stubs/wordpress-stubs": "^6.9",
-        "php-stubs/woocommerce-stubs": "^10.4"
-    },
-    "autoload": {
-        "psr-4": {
-            "Ferrayds\\PaigamiWoocommercePlugin\\": "src/"
-        }
-    },
-    "authors": [
-        {
-            "name": "Kabirou ALASSANE",
-            "email": "kabirou2001@gmail.com"
-        }
-    ],
-    "require": {}
+  "name": "ferrayds/paigami-woocommerce-plugin",
+  "description": "Paigami is a smart payment orchestrator that automatically routes payments to the best available gateway based on country, fees, and success rates.",
+  "type": "library",
+  "require-dev": {
+    "php-stubs/wordpress-stubs": "^6.9",
+    "php-stubs/woocommerce-stubs": "^10.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "Ferrayds\\PaigamiWoocommercePlugin\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "classmap": [
+      "vendor/php-stubs/wordpress-stubs",
+      "vendor/php-stubs/woocommerce-stubs"
+    ]
+  },
+  "authors": [
+    {
+      "name": "Kabirou ALASSANE",
+      "email": "ferraydigitalsolutions@gmail.com"
+    }
+  ],
+  "require": {}
 }
