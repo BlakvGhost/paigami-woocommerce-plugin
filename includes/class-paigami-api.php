@@ -18,8 +18,8 @@ class Paigami_WC_API
         $this->secret_key = $this->get_option('secret_key');
         $this->test_mode = 'yes' === $this->get_option('test_mode', 'yes');
         $this->base_url = $this->test_mode
-            ? 'http://127.0.0.1:8004/api/v1'
-            : 'http://127.0.0.1:8004/api/v1';
+            ? 'https://api.paigami.com/api/v1'
+            : 'https://api.paigami.com/api/v1';
     }
 
     private function get_option($key, $default = null)
